@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Primary 3 Chinese Spelling Game - 第十七课 听写小英雄</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- HanziWriter for stroke order animation & practice -->
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Fredoka', 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+            min-height: 100vh;
+        }
+
+        .btn-bounce:hover {
+            transform: scale(1.05);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+
+        /* Tian Zi Ge grid background for handwriting */
+        .tianzige {
+            background-color: #ffffff;
+            background-image: 
+                linear-gradient(to right, rgba(239, 68, 68, 0.3) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(239, 68, 68, 0.3) 1px, transparent 1px),
+                linear-gradient(to right, rgba(239, 68, 68, 0.15) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(239, 68, 68, 0.15) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 50% 50%, 50% 50%;
+            background-position: center center;
+            border: 3px solid #ef4444;
+            position: relative;
+        }
+
+        .tianzige::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            border-top: 2px dashed #fca5a5;
+        }
+
+        .tianzige::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            border-left: 2px dashed #fca5a5;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-800 pb-10 select-none">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 shadow-sm px-4 py-3">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-amber-400 flex items-center justify-center text-2xl shadow-inner">
+                    🐼
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg md:text-xl text-slate-800 leading-none">听写小英雄</h1>
+                    <span class="text-xs font-medium text-amber-600">小三 · 第十七课 (11月5日)</span>
+                </div>
+            </div>
+
+            <!-- User Rewards & Stars -->
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center bg-amber-100 border border-amber-300 rounded-full px-3 py-1 text-amber-800 font-bold text-sm">
+                    <i class="fa-solid fa-star text-amber-500 mr-1.5 text-base animate-bounce"></i>
+                    <span id="star-count">0</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto w-full px-4 pt-6 flex-1 flex flex-col">
+
+        <!-- Navigation Tabs -->
+        <nav class="grid grid-cols-4 gap-2 mb-6">
+            <button onclick="switchTab('study')" id="tab-study" class="nav-tab py-3 px-2 rounded-2xl font-bold text-center text-xs md:text-base border-2 transition flex flex-col md:flex-row items-center justify-center gap-1.5 bg-indigo-600 text-white border-indigo-600 shadow-md">
+                <i class="fa-solid fa-book-open text-base"></i>
+                <span>学习词汇</span>
+            </button>
+            <button onclick="switchTab('write')" id="tab-write" class="nav-tab py-3 px-2 rounded-2xl font-bold text-center text-xs md:text-base border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition flex flex-col md:flex-row items-center justify-center gap-1.5">
+                <i class="fa-solid fa-pen-nib text-base"></i>
+                <span>笔顺书写</span>
+            </button>
+            <button onclick="switchTab('match')" id="tab-match" class="nav-tab py-3 px-2 rounded-2xl font-bold text-center text-xs md:text-base border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition flex flex-col md:flex-row items-center justify-center gap-1.5">
+                <i class="fa-solid fa-gamepad text-base"></i>
+                <span>拼音配对</span>
+            </button>
+            <button onclick="switchTab('test')" id="tab-test" class="nav-tab py-3 px-2 rounded-2xl font-bold text-center text-xs md:text-base border-2 border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition flex flex-col md:flex-row items-center justify-center gap-1.5">
+                <i class="fa-solid fa-trophy text-base"></i>
+                <span>听写大挑战</span>
+            </button>
+        </nav>
+
+        <!-- SECTION 1: STUDY FLASHCARDS -->
+        <section id="sec-study" class="tab-content block">
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <span>📖 词语与句子卡片</span>
+                    </h2>
+                    <span id="study-progress-text" class="text-sm font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">1 / 13</span>
+                </div>
+
+                <!-- Flashcard -->
+                <div class="relative bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-100 rounded-2xl p-6 md:p-8 flex flex-col items-center justify-center min-h-[280px] text-center shadow-inner">
+                    <button onclick="speakCurrentWord()" class="absolute top-4 right-4 w-12 h-12 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center text-xl shadow-lg transition btn-bounce" title="朗读声音">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+
+                    <div id="fc-pinyin" class="text-indigo-600 text-lg md:text-2xl font-semibold mb-2">lāo qǐ lái</div>
+                    <div id="fc-hanzi" onclick="speakCurrentWord()" class="text-3xl md:text-5xl font-bold text-slate-800 mb-4 tracking-wider cursor-pointer hover:text-indigo-600 transition">捞起来</div>
+                    
+                    <div id="fc-target-wrap" class="inline-block bg-amber-100 border border-amber-300 rounded-lg px-3 py-1 text-amber-900 font-medium text-sm mb-3">
+                        重点字: <span id="fc-target" class="font-bold underline text-red-600">捞</span>
+                    </div>
+
+                    <p id="fc-meaning" class="text-slate-600 text-sm md:text-base max-w-md mt-2">
+                        例句/解释: 把水里的东西取出来。
+                    </p>
+                </div>
+
+                <!-- Navigation Controls -->
+                <div class="flex justify-between items-center mt-6 gap-4">
+                    <button onclick="prevStudyCard()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition flex items-center justify-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-arrow-left"></i> 上一个
+                    </button>
+                    <button onclick="nextStudyCard()" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 active:scale-95">
+                        下一个 <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- List of all words -->
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+                <h3 class="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wider">本课听写词汇列表 (点击卡片朗读与学习)</h3>
+                <div id="vocab-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: HANDWRITING PRACTICE -->
+        <section id="sec-write" class="tab-content hidden">
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span>✍️ 汉字笔顺书写练习</span>
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">跟着动画或在米字格中练习书写重点生字</p>
+                    </div>
+
+                    <!-- Character Selector Dropdown -->
+                    <div class="flex items-center space-x-2 w-full md:w-auto">
+                        <label class="text-sm font-semibold text-slate-600 shrink-0">选择生字:</label>
+                        <select id="char-select" onchange="loadWriterChar(this.value)" class="w-full md:w-auto bg-slate-100 border border-slate-300 font-bold rounded-xl px-4 py-2 text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    
+                    <!-- Left: Stroke Order Viewer -->
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs font-bold text-slate-400 mb-2 uppercase">1. 观察笔顺演示</span>
+                        <div class="tianzige w-56 h-56 rounded-2xl flex items-center justify-center shadow-md bg-white">
+                            <div id="hanzi-writer-demo"></div>
+                        </div>
+                        <div class="flex space-x-2 mt-4">
+                            <button onclick="animateCharacter()" class="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold text-xs rounded-xl transition flex items-center gap-1">
+                                <i class="fa-solid fa-play"></i> 播放笔顺
+                            </button>
+                            <button onclick="speakChar()" class="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold text-xs rounded-xl transition flex items-center gap-1">
+                                <i class="fa-solid fa-volume-high"></i> 读音
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Interactive Canvas Handwriting Practice -->
+                    <div class="flex flex-col items-center border-t md:border-t-0 md:border-l border-slate-100 pt-6 md:pt-0">
+                        <span class="text-xs font-bold text-slate-400 mb-2 uppercase">2. 亲自临摹书写</span>
+                        <div class="relative">
+                            <div class="tianzige w-56 h-56 rounded-2xl flex items-center justify-center shadow-md bg-white overflow-hidden">
+                                <div id="faint-char" class="absolute inset-0 flex items-center justify-center text-[150px] text-slate-200 font-serif select-none pointer-events-none opacity-60">
+                                    捞
+                                </div>
+                                <canvas id="draw-canvas" width="224" height="224" class="relative z-10 cursor-crosshair touch-none"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Controls -->
+                        <div class="flex space-x-3 mt-4">
+                            <button onclick="clearCanvas()" class="px-4 py-2 bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-eraser"></i> 清除重写
+                            </button>
+                            <button onclick="verifyWriting()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-emerald-200 btn-bounce">
+                                <i class="fa-solid fa-check"></i> 完成提交
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Hint box -->
+            <div id="writing-feedback" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center text-emerald-800 font-bold animate-pulse">
+                🎉 写得太棒了！加 10 颗小星星！ 🌟
+            </div>
+        </section>
+
+        <!-- SECTION 3: PINYIN MATCHING GAME -->
+        <section id="sec-match" class="tab-content hidden">
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">🎮 拼音词语消消乐</h2>
+                        <p class="text-xs text-slate-500 mt-1">将拼音与正确的汉字连线配对！</p>
+                    </div>
+                    <button onclick="initMatchGame()" class="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold text-xs rounded-xl transition">
+                        <i class="fa-solid fa-rotate-right"></i> 重新换一组
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 md:gap-6" id="match-grid">
+                    <!-- Left: Pinyin Buttons -->
+                    <div class="space-y-3" id="match-pinyin-col"></div>
+                    <!-- Right: Hanzi Buttons -->
+                    <div class="space-y-3" id="match-hanzi-col"></div>
+                </div>
+
+                <div id="match-success-msg" class="hidden mt-6 p-4 bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-2xl text-center font-bold">
+                    🌟 绝佳！你完成了所有词语配对！
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: DICTATION TEST (听写模拟) -->
+        <section id="sec-test" class="tab-content hidden">
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <span>🏆 听写真题模拟测试</span>
+                    </h2>
+                    <span id="test-progress" class="text-xs font-bold bg-amber-100 text-amber-800 px-3 py-1 rounded-full">第 1 / 13 题</span>
+                </div>
+
+                <!-- Dictation Card -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+                    <p class="text-xs text-slate-400 font-bold mb-2 uppercase">点击喇叭听发音</p>
+                    
+                    <button onclick="playTestAudio()" class="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white flex items-center justify-center text-3xl shadow-xl hover:scale-105 active:scale-95 transition mb-6 btn-bounce">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+
+                    <div id="test-hint" class="text-sm font-medium text-slate-500 mb-6 max-w-lg">
+                        提示: 点击听读音并写出正确的字词或句子
+                    </div>
+
+                    <!-- Input for User Answer -->
+                    <div class="w-full max-w-md space-y-3">
+                        <input type="text" id="test-user-input" placeholder="请在这里输入汉字..." class="w-full text-center text-xl font-bold py-3 px-4 rounded-xl border-2 border-indigo-200 focus:border-indigo-500 focus:outline-none shadow-sm" autocomplete="off">
+                        
+                        <div class="flex gap-3">
+                            <button onclick="checkTestAnswer()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-md shadow-emerald-100 btn-bounce">
+                                提交答案
+                            </button>
+                            <button onclick="skipTestQuestion()" class="px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold rounded-xl transition">
+                                跳过
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Feedback Result Box -->
+                <div id="test-result-box" class="hidden mt-6 p-4 rounded-2xl border text-center font-bold"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- JS Logic -->
+    <script>
+        // --- 1. DATA SOURCE (PRIMARY 3 LESSON 17 VOCABULARY & SENTENCES) ---
+        const vocabList = [
+            { id: 1, hanzi: "捞起来", target: "捞", pinyin: "lāo qǐ lái", meaning: "从水里把东西取出来。" },
+            { id: 2, hanzi: "摘下来", target: "摘", pinyin: "zhāi xià lái", meaning: "用手采下树上的花果或取下东西。" },
+            { id: 3, hanzi: "失去", target: "失", pinyin: "shī qù", meaning: "不再拥有；掉落。" },
+            { id: 4, hanzi: "金色", target: "金", pinyin: "jīn sè", meaning: "像黄金一样的颜色。" },
+            { id: 5, hanzi: "口试", target: "试", pinyin: "kǒu shì", meaning: "用口头回答的方式进行考试。" },
+            { id: 6, hanzi: "答案", target: "案", pinyin: "dá àn", meaning: "对问题做出的正确解答。" },
+            { id: 7, hanzi: "消息", target: "消", pinyin: "xiāo xi", meaning: "关于情况的报道或信息。" },
+            { id: 8, hanzi: "一千", target: "千", pinyin: "yī qiān", meaning: "数字 1000。" },
+            { id: 9, hanzi: "两万", target: "万", pinyin: "liǎng wàn", meaning: "数字 20000。" },
+            { id: 10, hanzi: "等一等", target: "等", pinyin: "děng yi děng", meaning: "稍作停顿或等待片刻。" },
+            { id: 11, hanzi: "看了便条后，我立刻检查了卷子。", target: "刻", pinyin: "kàn le biàn tiáo hòu, wǒ lì kè jiǎn chá le juàn zi", meaning: "默写：看了便条后，我立刻检查了卷子。" },
+            { id: 12, hanzi: "哥哥不断地练习，结果在游泳比赛中得了银牌。", target: "银", pinyin: "gē ge bú duàn de liàn xí, jié guǒ zài yóu yǒng bǐ sài zhōng dé le yín pái", meaning: "默写：哥哥不断地练习，结果在游泳比赛中得了银牌。" },
+            { id: 13, hanzi: "小明不小心打破了课室的窗口，他感到害怕。", target: "感", pinyin: "xiǎo míng bù xiǎo xīn dǎ pò le kè shì de chuāng kǒu, tā gǎn dào hěn hài pà", meaning: "默写：小明不小心打破了课室的窗口，他感到害怕。" }
+        ];
+
+        // Target Chinese characters for handwriting
+        const practiceChars = ["捞", "摘", "失", "金", "试", "案", "消", "千", "万", "等", "刻", "银", "感"];
+
+        // --- 2. GLOBAL STATE VARIABLES ---
+        let currentStudyIndex = 0;
+        let userStars = 0;
+        let writerInstance = null;
+        let currentTestIndex = 0;
+        let selectedPinyinBtn = null;
+        let selectedHanziBtn = null;
+        let availableVoices = [];
+        let currentAudioObject = null;
+
+        // --- 3. INITIALIZATION ---
+        window.onload = function() {
+            renderVocabGrid();
+            updateStudyCard();
+            populateCharSelect();
+            initCanvas();
+            initMatchGame();
+            initSpeechVoices();
+
+            // Auto resume speech context on user click
+            document.body.addEventListener('click', function() {
+                if ('speechSynthesis' in window && window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                }
+            }, { once: true });
+        };
+
+        // Initialize voices list for browser Speech Synthesis
+        function initSpeechVoices() {
+            if ('speechSynthesis' in window) {
+                const loadVoices = () => {
+                    availableVoices = window.speechSynthesis.getVoices();
+                };
+                loadVoices();
+                if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                    window.speechSynthesis.onvoiceschanged = loadVoices;
+                }
+            }
+        }
+
+        // Robust Multi-Engine Text-to-Speech (TTS) Engine
+        function speakText(text) {
+            if (!text) return;
+
+            // Stop active playback if running
+            if (currentAudioObject) {
+                currentAudioObject.pause();
+                currentAudioObject = null;
+            }
+
+            const cleanText = text.replace(/[，。！？]/g, ' ');
+
+            // Strategy 1: Native SpeechSynthesis
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.85;
+
+                const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
+                const zhVoice = voices.find(v => 
+                    v.lang.includes('zh') || 
+                    v.lang.includes('CN') || 
+                    v.name.toLowerCase().includes('chinese')
+                );
+
+                if (zhVoice) {
+                    utterance.voice = zhVoice;
+                }
+
+                let playedNative = false;
+                utterance.onstart = () => { playedNative = true; };
+
+                try {
+                    window.speechSynthesis.speak(utterance);
+                    setTimeout(() => {
+                        if (!playedNative && window.speechSynthesis.speaking === false) {
+                            playOnlineTTSFallback(cleanText);
+                        }
+                    }, 400);
+                    return;
+                } catch (e) {
+                    console.warn("SpeechSynthesis error, falling back to online TTS...", e);
+                }
+            }
+
+            // Strategy 2: Online Stream Fallback
+            playOnlineTTSFallback(cleanText);
+        }
+
+        // Online TTS Audio Player Engine (Google TTS + Youdao fallback)
+        function playOnlineTTSFallback(text) {
+            const encoded = encodeURIComponent(text);
+            const googleUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=zh-CN&client=tw-ob`;
+            const youdaoUrl = `https://dict.youdao.com/dictvoice?type=0&audio=${encoded}`;
+
+            currentAudioObject = new Audio(googleUrl);
+            
+            const playPromise = currentAudioObject.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    currentAudioObject = new Audio(youdaoUrl);
+                    currentAudioObject.play().catch(err => {
+                        console.error("All speech playback methods failed:", err);
+                    });
+                });
+            }
+        }
+
+        // --- 4. TAB NAVIGATION ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-tab').forEach(el => {
+                el.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600', 'shadow-md');
+                el.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            });
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            activeTab.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+            activeTab.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600', 'shadow-md');
+
+            if (tabId === 'write' && !writerInstance) {
+                loadWriterChar(practiceChars[0]);
+            }
+        }
+
+        // --- 5. STUDY FLASHCARDS LOGIC ---
+        function updateStudyCard() {
+            const item = vocabList[currentStudyIndex];
+            document.getElementById('fc-pinyin').innerText = item.pinyin;
+            document.getElementById('fc-hanzi').innerText = item.hanzi;
+            document.getElementById('fc-target').innerText = item.target;
+            document.getElementById('fc-meaning').innerText = "例句/解释: " + item.meaning;
+            document.getElementById('study-progress-text').innerText = `${currentStudyIndex + 1} / ${vocabList.length}`;
+        }
+
+        function speakCurrentWord() {
+            const item = vocabList[currentStudyIndex];
+            speakText(item.hanzi);
+        }
+
+        function prevStudyCard() {
+            currentStudyIndex = (currentStudyIndex - 1 + vocabList.length) % vocabList.length;
+            updateStudyCard();
+        }
+
+        function nextStudyCard() {
+            currentStudyIndex = (currentStudyIndex + 1) % vocabList.length;
+            updateStudyCard();
+        }
+
+        function renderVocabGrid() {
+            const grid = document.getElementById('vocab-grid');
+            grid.innerHTML = '';
+            vocabList.forEach((item, index) => {
+                const btn = document.createElement('button');
+                btn.className = `p-3 rounded-2xl border text-left flex flex-col justify-between transition hover:border-indigo-500 hover:shadow-md ${index === currentStudyIndex ? 'bg-indigo-50 border-indigo-300' : 'bg-slate-50 border-slate-200'}`;
+                btn.onclick = () => {
+                    currentStudyIndex = index;
+                    updateStudyCard();
+                    speakCurrentWord();
+                };
+                btn.innerHTML = `
+                    <span class="text-xs text-indigo-600 font-medium">${item.pinyin.split(',')[0]}</span>
+                    <span class="font-bold text-slate-800 text-base md:text-lg truncate">${item.hanzi}</span>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        // --- 6. HANDWRITING & STROKE ORDER LOGIC ---
+        function populateCharSelect() {
+            const select = document.getElementById('char-select');
+            select.innerHTML = '';
+            practiceChars.forEach(char => {
+                const opt = document.createElement('option');
+                opt.value = char;
+                opt.innerText = char;
+                select.appendChild(opt);
+            });
+        }
+
+        function loadWriterChar(char) {
+            document.getElementById('faint-char').innerText = char;
+            document.getElementById('hanzi-writer-demo').innerHTML = '';
+            
+            writerInstance = HanziWriter.create('hanzi-writer-demo', char, {
+                width: 200,
+                height: 200,
+                padding: 5,
+                strokeColor: '#334155',
+                radicalColor: '#ef4444',
+                showOutline: true
+            });
+            writerInstance.animateCharacter();
+            clearCanvas();
+        }
+
+        function animateCharacter() {
+            if (writerInstance) writerInstance.animateCharacter();
+        }
+
+        function speakChar() {
+            const char = document.getElementById('char-select').value;
+            speakText(char);
+        }
+
+        // Canvas Drawing Setup
+        let isDrawing = false;
+        let canvas, ctx;
+
+        function initCanvas() {
+            canvas = document.getElementById('draw-canvas');
+            ctx = canvas.getContext('2d');
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#1e1b4b';
+
+            // Mouse Listeners
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDraw);
+            canvas.addEventListener('mouseleave', stopDraw);
+
+            // Touch Listeners
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); });
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
+            canvas.addEventListener('touchend', stopDraw);
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function startDraw(e) {
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDraw() {
+            isDrawing = false;
+        }
+
+        function clearCanvas() {
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function verifyWriting() {
+            addStars(10);
+            const fb = document.getElementById('writing-feedback');
+            fb.classList.remove('hidden');
+            confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+            setTimeout(() => fb.classList.add('hidden'), 3000);
+        }
+
+        // --- 7. PINYIN MATCHING GAME LOGIC ---
+        let matchPairs = [];
+
+        function initMatchGame() {
+            document.getElementById('match-success-msg').classList.add('hidden');
+            selectedPinyinBtn = null;
+            selectedHanziBtn = null;
+
+            // Pick 5 random words
+            const shuffled = [...vocabList].sort(() => 0.5 - Math.random());
+            matchPairs = shuffled.slice(0, 5);
+
+            const pinyinCol = document.getElementById('match-pinyin-col');
+            const hanziCol = document.getElementById('match-hanzi-col');
+            pinyinCol.innerHTML = '';
+            hanziCol.innerHTML = '';
+
+            const pinyins = [...matchPairs].sort(() => 0.5 - Math.random());
+            const hanzis = [...matchPairs].sort(() => 0.5 - Math.random());
+
+            pinyins.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full py-3 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-semibold text-indigo-600 text-sm md:text-base text-center transition hover:border-indigo-400';
+                btn.innerText = item.pinyin.split(',')[0];
+                btn.dataset.id = item.id;
+                btn.onclick = () => selectPinyin(btn);
+                pinyinCol.appendChild(btn);
+            });
+
+            hanzis.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full py-3 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-base md:text-lg text-center transition hover:border-indigo-400';
+                btn.innerText = item.hanzi;
+                btn.dataset.id = item.id;
+                btn.onclick = () => selectHanzi(btn);
+                hanziCol.appendChild(btn);
+            });
+        }
+
+        function selectPinyin(btn) {
+            if (document.getElementById('match-pinyin-col').querySelectorAll('button').length === 0) return;
+            document.getElementById('match-pinyin-col').querySelectorAll('button').forEach(b => b.classList.remove('border-indigo-600', 'bg-indigo-100'));
+            btn.classList.add('border-indigo-600', 'bg-indigo-100');
+            selectedPinyinBtn = btn;
+            checkMatch();
+        }
+
+        function selectHanzi(btn) {
+            if (document.getElementById('match-hanzi-col').querySelectorAll('button').length === 0) return;
+            document.getElementById('match-hanzi-col').querySelectorAll('button').forEach(b => b.classList.remove('border-indigo-600', 'bg-indigo-100'));
+            btn.classList.add('border-indigo-600', 'bg-indigo-100');
+            selectedHanziBtn = btn;
+            checkMatch();
+        }
+
+        function checkMatch() {
+            if (selectedPinyinBtn && selectedHanziBtn) {
+                if (selectedPinyinBtn.dataset.id === selectedHanziBtn.dataset.id) {
+                    // Correct Match
+                    selectedPinyinBtn.className = 'w-full py-3 px-4 bg-emerald-100 border-2 border-emerald-400 text-emerald-700 font-bold rounded-xl text-center animate-pulse';
+                    selectedHanziBtn.className = 'w-full py-3 px-4 bg-emerald-100 border-2 border-emerald-400 text-emerald-700 font-bold rounded-xl text-center animate-pulse';
+                    
+                    speakText(selectedHanziBtn.innerText);
+                    addStars(5);
+
+                    setTimeout(() => {
+                        selectedPinyinBtn?.remove();
+                        selectedHanziBtn?.remove();
+                        selectedPinyinBtn = null;
+                        selectedHanziBtn = null;
+
+                        if (document.getElementById('match-pinyin-col').children.length === 0) {
+                            document.getElementById('match-success-msg').classList.remove('hidden');
+                            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                        }
+                    }, 500);
+                } else {
+                    // Incorrect Match
+                    selectedPinyinBtn.classList.add('border-rose-500', 'bg-rose-100');
+                    selectedHanziBtn.classList.add('border-rose-500', 'bg-rose-100');
+                    setTimeout(() => {
+                        selectedPinyinBtn?.classList.remove('border-rose-500', 'bg-rose-100', 'border-indigo-600', 'bg-indigo-100');
+                        selectedHanziBtn?.classList.remove('border-rose-500', 'bg-rose-100', 'border-indigo-600', 'bg-indigo-100');
+                        selectedPinyinBtn = null;
+                        selectedHanziBtn = null;
+                    }, 600);
+                }
+            }
+        }
+
+        // --- 8. DICTATION TEST LOGIC ---
+        function playTestAudio() {
+            const item = vocabList[currentTestIndex];
+            speakText(item.hanzi);
+        }
+
+        function checkTestAnswer() {
+            const input = document.getElementById('test-user-input').value.trim();
+            const currentItem = vocabList[currentTestIndex];
+            const resultBox = document.getElementById('test-result-box');
+
+            if (!input) return;
+
+            if (input === currentItem.hanzi) {
+                resultBox.className = "mt-6 p-4 rounded-2xl border text-center font-bold bg-emerald-100 border-emerald-300 text-emerald-800 block";
+                resultBox.innerHTML = `🎉 完全正确！答案就是: <strong>${currentItem.hanzi}</strong> (+15 星星)`;
+                addStars(15);
+                confetti({ particleCount: 60, spread: 60, origin: { y: 0.6 } });
+                setTimeout(() => nextTestQuestion(), 2000);
+            } else {
+                resultBox.className = "mt-6 p-4 rounded-2xl border text-center font-bold bg-rose-100 border-rose-300 text-rose-800 block";
+                resultBox.innerHTML = `❌ 再试一次哦！正确答案是: <span class="underline">${currentItem.hanzi}</span> (${currentItem.pinyin})`;
+            }
+        }
+
+        function skipTestQuestion() {
+            nextTestQuestion();
+        }
+
+        function nextTestQuestion() {
+            document.getElementById('test-user-input').value = '';
+            document.getElementById('test-result-box').classList.add('hidden');
+            currentTestIndex = (currentTestIndex + 1) % vocabList.length;
+            document.getElementById('test-progress').innerText = `第 ${currentTestIndex + 1} / ${vocabList.length} 题`;
+            playTestAudio();
+        }
+
+        // --- 9. UTILITY REWARDS LOGIC ---
+        function addStars(num) {
+            userStars += num;
+            document.getElementById('star-count').innerText = userStars;
+        }
+    </script>
+</body>
+</html>
